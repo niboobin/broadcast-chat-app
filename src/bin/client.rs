@@ -1,3 +1,5 @@
+use std::env;
+
 use futures_util::stream::StreamExt;
 use futures_util::SinkExt;
 use http::Uri;
@@ -13,6 +15,13 @@ async fn main() -> Result<(), tokio_websockets::Error> {
 
     let stdin = tokio::io::stdin();
     let mut stdin = BufReader::new(stdin).lines();
+    // Get the username from the command-line arguments
+    let args: Vec<String> = env::args().collect();
+    let username = if args.len() > 1 {
+        &args[1]
+    } else {
+        "Guest"
+    };
 
 
     loop {
@@ -31,7 +40,11 @@ async fn main() -> Result<(), tokio_websockets::Error> {
             res = stdin.next_line() => {
                 match res {
                     Ok(None) => return Ok(()),
-                    Ok(Some(line)) => ws_stream.send(Message::text(line.to_string())).await?,
+                    Ok(Some(line)) => {
+                        // Include the username with each message
+                        let line_with_username = format!("{}: {}", username, line);
+                        ws_stream.send(Message::text(line_with_username)).await?;
+                    },
                     Err(err) => return Err(err.into()),
                 }
             }
